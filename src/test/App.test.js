@@ -1,5 +1,4 @@
-import { describe, it, expect } from 'vitest';
-import App from '../App.jsx';
+import App from '../App';
 
 describe('App', () => {
   it('should render', () => {
