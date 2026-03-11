@@ -1,4 +1,4 @@
-name: Event Deployment
+name: ActivityEvent Deployment
 on:
     pull_request:
         types:
