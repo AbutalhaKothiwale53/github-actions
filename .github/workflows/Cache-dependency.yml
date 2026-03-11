@@ -1,4 +1,4 @@
-name: Artifacts Deployment
+name: Caching Dependencies
 on:
   push:
     branches:
