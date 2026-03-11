@@ -12,6 +12,9 @@ on:
             - dev
         paths:
              - '.github/workflows/Activity-Eventss-Depmnt.yml'
+             - '.github/workflows/Event-Filters.yml'
+             - '.github/workflows/Basic-Deployment.yml'
+             - '.github/workflows/Event-deployment1.yml'
 jobs:
   deploy:
     runs-on: ubuntu-latest
