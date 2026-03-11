@@ -1,9 +1,11 @@
-name: 01 Basic Deployment
-on: push
+name: Event Deployment
+on: [push, workflow_dispatch]
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Output event data
+        run: echo  "${{ toJson(github.event) }}"
       - name: Checkout Code
         uses: actions/checkout@v4
       
