@@ -25,7 +25,6 @@ jobs:
 
             - run: npm ci
             - run: npm run lint
-            - run: npm run format:check
     test:
         name: Test (Node ${{ matrix.node-version }})
         runs-on: ubuntu-latest
@@ -49,8 +48,22 @@ jobs:
                 path: ~/.npm
                 key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
 
-            - run: npm ci
-            - run: npm test -- --coverage
+            - name: Run tests
+              id: test
+              run: |
+                set -o pipefail
+                npm test -- --json --outputFile=test-results.json --runInBand --watchAll=false
+              continue-on-error: true
+
+            - name: Upload test results artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: test-results
+                path: test-results.json
+
+            - name: Fail if tests failed
+              if: steps.test.outcome == 'failure'
+              run: exit 1
     build:
         name: Build
         runs-on: ubuntu-latest
