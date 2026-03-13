@@ -1,0 +1,116 @@
+name: Github Action deployment
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js 24.x
+              uses: actions/setup-node@v4
+              with:
+                node-version: '24.x'
+                cache: npm
+
+            - name: Restore npm cache
+              uses: actions/cache@v4
+              with:
+                path: ~/.npm
+                key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+
+            - run: npm ci
+            - run: npm run lint
+            - run: npm run format:check
+    test:
+        name: Test (Node ${{ matrix.node-version }})
+        runs-on: ubuntu-latest
+        needs: lint
+        strategy:
+            matrix:
+                node-version: [18.x, 20.x, 24.x]
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                node-version: ${{ matrix.node-version }}
+                cache: npm
+
+            - name: Restore npm cache
+              uses: actions/cache@v4
+              with:
+                path: ~/.npm
+                key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+
+            - run: npm ci
+            - run: npm test -- --coverage
+    build:
+        name: Build
+        runs-on: ubuntu-latest
+        needs: test
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: '24.x'
+                cache: npm
+
+            - name: Restore npm cache
+              uses: actions/cache@v4
+              with:
+                path: ~/.npm
+                key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+
+            - run: npm ci
+            - run: npm run build
+            - uses: actions/upload-artifact@v4
+              with:
+                name: build
+                path: build/
+    deploy-dev:
+        name: Deploy to development environment
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: dev
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Download build artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: build
+                path: build/
+            # - name: Deploy to development environment
+            #   run: ./scripts/deploy-dev.sh
+            #   env:
+            #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+    deploy-production:
+        name: Deploy to production environment
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        needs: build
+        runs-on: ubuntu-latest
+        environment:
+            name: production
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Download build artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: build
+                path: build/
+            # - name: Deploy to development environment
+            #   run: ./scripts/deploy-dev.sh
+            #   env:
+            #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
