@@ -1,119 +1,171 @@
 name: Github Action deployment
 on:
-    push:
-        branches:
-            - main
-            - dev
-    workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Set up Node.js 20
-              uses: actions/setup-node@v4
-              with:
-                node-version: '20'
-                cache: npm
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-            - name: Restore npm cache
-              uses: actions/cache@v4
-              with:
-                path: ~/.npm
-                key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: lint-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-lint-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-lint-node-
 
-            - run: npm ci
-            - run: npm run lint
-    test:
-        name: Test (Node ${{ matrix.node-version }})
-        runs-on: ubuntu-latest
-        needs: lint
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+      - name: Install dependencies
+        if: steps.lint-cache.outputs.cache-hit != 'true'
+        run: npm ci
 
-            # - name: Set up Node.js ${{ matrix.node-version }}
-            #   uses: actions/setup-node@v4
-            #   with:
-            #     node-version: ${{ matrix.node-version }}
-            #     cache: npm
+      - run: npm run lint
 
-            - name: Restore npm cache
-              uses: actions/cache@v4
-              with:
-                path: ~/.npm
-                key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+  test:
+    name: Test (Node 20)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Install dependencies
-              run: npm ci
-            - name: Test code
-              run: npm run test
-              continue-on-error: true
-    build:
-        name: Build
-        runs-on: ubuntu-latest
-        needs: test
-        outputs:
-            script-file: ${{ steps.publish.outputs.script-file }}
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                node-version: '20'
-                cache: npm
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-            - name: Restore npm cache
-              uses: actions/cache@v4
-              with:
-                path: ~/.npm
-                key: deps-node-modules-${{ hashFiles('**/package-lock.json') }}
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: test-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-test-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-test-node-
 
-            - run: npm ci
-            - run: npm run build
-            - uses: actions/upload-artifact@v4
-              with:
-                name: build
-                path: build/
-    deploy-dev:
-        name: Deploy to development environment
-        if: (github.ref == 'refs/heads/dev' && github.event_name == 'push') || (github.ref == 'refs/heads/main' && github.event_name == 'push')
-        needs: build
-        runs-on: ubuntu-latest
-        environment:
-            name: dev
-        permissions:
-            contents: read
-            id-token: write
-        steps:
-            - name: Download build artifact
-              uses: actions/download-artifact@v4
-              with:
-                name: build
-                path: build/
-            # - name: Deploy to development environment
-            #   run: ./scripts/deploy-dev.sh
-            #   env:
-            #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-    deploy-production:
-        name: Deploy to production environment
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        needs: build
-        runs-on: ubuntu-latest
-        environment:
-            name: production
-        permissions:
-            contents: read
-            id-token: write
-        steps:
-            - name: Download build artifact
-              uses: actions/download-artifact@v4
-              with:
-                name: build
-                path: build/
-            # - name: Deploy to development environment
-            #   run: ./scripts/deploy-dev.sh
-            #   env:
-            #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
-            
+      - name: Install dependencies
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Test code
+        run: npm run test
+        continue-on-error: true
+
+      - name: Upload Success Report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-success-report
+          path: |
+            junit.xml
+            coverage/
+          retention-days: 7
+
+      - name: Upload Failure Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-failure-report
+          path: |
+            junit.xml
+            coverage/
+          retention-days: 30
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      script-file: ${{ steps.publish.outputs.script-file }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: build-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-build-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-node-
+
+      - name: Install dependencies
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - run: npm run build
+
+      - name: Publish build info
+        id: publish
+        run: |
+          if [ -f "build/index.html" ]; then
+            echo "script-file=build/index.html" >> $GITHUB_OUTPUT
+          else
+            echo "script-file=build/assets/index-[hash].html" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build/
+
+  deploy-dev:
+    name: Deploy to development environment
+    if: (github.ref == 'refs/heads/dev' && github.event_name == 'push') || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build/
+
+      # - name: Deploy to development environment
+      #   run: ./scripts/deploy-dev.sh
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-production:
+    name: Deploy to production environment
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build/
+
+      # - name: Deploy to production environment
+      #   run: ./scripts/deploy-prod.sh
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
