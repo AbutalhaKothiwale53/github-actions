@@ -1,38 +1,57 @@
-.App {
-  text-align: center;
+/* App Container */
+.app {
+  width: 100%;
+  height: 100%;
+  background-color: #f5f5f5;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Base Colors - White and Light Green Theme */
+:root {
+  --primary-color: #2e7d32;
+  --secondary-color: #66bb6a;
+  --background-color: #ffffff;
+  --light-background: #f5f5f5;
+  --text-dark: #333333;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* Global Styles */
+html,
+body,
+#root {
+  height: 100%;
+  background-color: var(--light-background);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* Transitions */
+* {
+  transition: all 0.3s ease;
 }
 
-.App-link {
-  color: #61dafb;
+/* Override Bootstrap defaults */
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 10px 20px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.form-control,
+.form-select {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 0.2rem rgba(102, 187, 106, 0.25);
+}
+
+.card {
+  border: 1px solid #e8f5e9;
+  border-radius: 12px;
+  background-color: var(--background-color);
+}
+
+.navbar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

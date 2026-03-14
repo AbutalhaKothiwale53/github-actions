@@ -1,24 +1,60 @@
-import logo from './logo.svg';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
+// Authentication Components
+import UserLogin from './components/Auth/UserLogin';
+import AdminLogin from './components/Auth/AdminLogin';
+
+// User Components
+import UserHome from './components/User/UserHome';
+
+// Admin Components
+import AdminDashboard from './components/Admin/AdminDashboard';
+
+// Utility Components
+import ProtectedRoute from './utils/ProtectedRoute';
+import NotFound from './components/NotFound';
+
 function App() {
+  useEffect(() => {
+    // This can be used for global initialization or checks
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        {/* Auth Routes */}
+        <Route path="/login" element={<UserLogin />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+
+        {/* User Routes */}
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute requiredRole="user">
+              <UserHome />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default Route */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
   );
 }
 
