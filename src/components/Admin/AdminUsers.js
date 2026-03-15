@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Badge, Container } from 'react-bootstrap';
+import { Table, Card, Badge } from 'react-bootstrap';
 import { adminModule } from '../../modules/adminModule';
 import '../Admin/Admin.css';
 

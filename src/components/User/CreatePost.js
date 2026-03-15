@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Card, Button, Form } from 'react-bootstrap';
+import { Card, Button, Form } from 'react-bootstrap';
 import { postsModule } from '../../modules/postsModule';
 import '../User/UserHome.css';
 
