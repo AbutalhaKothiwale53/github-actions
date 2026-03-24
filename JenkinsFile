@@ -34,10 +34,8 @@ pipeline {
         }
     }
     post {
-        awlays {
-            archiveArtifacts artifacts: 'dist/**/*', fingerprint: true, allowEmptyArchive  : true
-        }
         always {
+            archiveArtifacts artifacts: 'dist/**/*', fingerprint: true, allowEmptyArchive: true
             echo 'Cleaning up workspace...'
             cleanWs()
         }
