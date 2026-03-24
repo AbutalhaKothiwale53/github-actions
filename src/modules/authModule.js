@@ -1,85 +1,130 @@
-// Mock user data for authentication
-export const MOCK_USERS = [
-  {
-    id: 1,
-    username: 'user1',
-    email: 'user1@example.com',
-    password: 'password123',
-    name: 'John Doe',
-    role: 'user',
-    createdAt: '2026-01-15',
-  },
-  {
-    id: 2,
-    username: 'user2',
-    email: 'user2@example.com',
-    password: 'password123',
-    name: 'Jane Smith',
-    role: 'user',
-    createdAt: '2026-02-10',
-  },
-];
+import { authAPI } from '../utils/apiClient';
+import logger from '../utils/frontendLogger';
 
-export const MOCK_ADMINS = [
-  {
-    id: 1,
-    username: 'admin',
-    email: 'admin@example.com',
-    password: 'admin123',
-    name: 'Admin User',
-    role: 'admin',
-    createdAt: '2025-12-01',
-  },
-];
+// User Registration
+export const registerUser = async (name, email, password) => {
+  try {
+    logger.info('User registration attempt', { name, email });
+    
+    const response = await authAPI.register('', email, password, name);
 
-// Authentication functions
-export const validateUserLogin = (username, password) => {
-  const user = MOCK_USERS.find(
-    (u) => u.username === username && u.password === password
-  );
-  return user || null;
+    if (response.success) {
+      // Auto-login: Save user and token to localStorage
+      saveUserToLocalStorage(response.data.user, response.token);
+      logger.info('User registered and logged in successfully', { 
+        email, 
+        userId: response.data.user._id 
+      });
+      return response;
+    } else {
+      logger.warn('User registration failed', { email, error: response.error });
+      return response;
+    }
+  } catch (error) {
+    logger.error('Registration Error', { email, error: error.message });
+    return {
+      success: false,
+      error: error.message || 'Registration failed',
+    };
+  }
 };
 
-export const validateAdminLogin = (username, password) => {
-  const admin = MOCK_ADMINS.find(
-    (a) => a.username === username && a.password === password
-  );
-  return admin || null;
+// User Login
+export const loginUser = async (email, password) => {
+  try {
+    logger.info('User login attempt', { email });
+    const response = await authAPI.login(email, password);
+
+    if (response.success) {
+      saveUserToLocalStorage(response.data.user, response.token);
+      logger.info('User logged in successfully', { email, userId: response.data.user._id });
+      return response;
+    } else {
+      logger.warn('User login failed', { error: response.error });
+      return response;
+    }
+  } catch (error) {
+    logger.logError('Login Error', error, { email });
+    return {
+      success: false,
+      error: error.message || 'Login failed',
+    };
+  }
 };
 
-export const saveUserToLocalStorage = (user) => {
+// Admin Login
+export const loginAdmin = async (email, password) => {
+  try {
+    logger.info('Admin login attempt', { email });
+    const response = await authAPI.adminLogin(email, password);
+
+    if (response.success) {
+      saveAdminToLocalStorage(response.data.user, response.token);
+      logger.info('Admin logged in successfully', { email, adminId: response.data.user._id });
+      return response;
+    } else {
+      logger.warn('Admin login failed', { error: response.error });
+      return response;
+    }
+  } catch (error) {
+    logger.logError('Admin Login Error', error, { email });
+    return {
+      success: false,
+      error: error.message || 'Admin login failed',
+    };
+  }
+};
+
+// Save user to localStorage
+export const saveUserToLocalStorage = (user, token) => {
   localStorage.setItem('currentUser', JSON.stringify(user));
+  localStorage.setItem('authToken', token);
   localStorage.setItem('userRole', 'user');
   localStorage.setItem('isAuthenticated', 'true');
 };
 
-export const saveAdminToLocalStorage = (admin) => {
+// Save admin to localStorage
+export const saveAdminToLocalStorage = (admin, token) => {
   localStorage.setItem('currentAdmin', JSON.stringify(admin));
+  localStorage.setItem('authToken', token);
   localStorage.setItem('userRole', 'admin');
   localStorage.setItem('isAuthenticated', 'true');
 };
 
+// Get current user
 export const getCurrentUser = () => {
   const user = localStorage.getItem('currentUser');
   return user ? JSON.parse(user) : null;
 };
 
+// Get current admin
 export const getCurrentAdmin = () => {
   const admin = localStorage.getItem('currentAdmin');
   return admin ? JSON.parse(admin) : null;
 };
 
+// Get user role
 export const getUserRole = () => {
   return localStorage.getItem('userRole') || null;
 };
 
+// Check if authenticated
 export const isAuthenticated = () => {
-  return localStorage.getItem('isAuthenticated') === 'true';
+  const token = localStorage.getItem('authToken');
+  return !!token && localStorage.getItem('isAuthenticated') === 'true';
 };
 
+// Logout
 export const logout = () => {
+  
+  logger.logUserAction('Logout', {
+    user: getCurrentUser()?.name || getCurrentAdmin()?.name,
+  });
+
   localStorage.removeItem('currentUser');
   localStorage.removeItem('currentAdmin');
+  localStorage.removeItem('token');
   localStorage.removeItem('userRole');
   localStorage.removeItem('isAuthenticated');
+  
 };

@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+    stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                bat 'npm ci'
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                bat 'npm test'
+            }
+        }
+        stage('Build') {
+            steps {
+                bat 'npm run build'
+            }
+        }
+        // stage('Archive Artifacts') {
+        //     steps {
+        //         archiveArtifacts artifacts: 'dist/**', fingerprint: true
+        //     }
+        // }
+        stage('Deploy') {
+            steps {
+                echo 'Deploying to production...'
+                // Add deployment steps here
+            }
+        }
+    }
+    post {
+        awlays {
+            archiveArtifacts artifacts: 'dist/**/*', fingerprint: true, allowEmptyArchive  : true
+        }
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+    }
+}
