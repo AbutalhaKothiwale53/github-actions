@@ -5,3 +5,5 @@ describe('App', () => {
     expect(App).toBeDefined();
   });
 });
+
+// Need to add test and code coverage
