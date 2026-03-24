@@ -1,34 +1,35 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Form, Button, Alert, Card } from 'react-bootstrap';
-import { validateAdminLogin, saveAdminToLocalStorage } from '../../modules/authModule';
+import { loginAdmin } from '../../modules/authModule';
+import logger from '../../utils/frontendLogger';
 import '../Auth/Auth.css';
 
 const AdminLogin = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const admin = validateAdminLogin(username, password);
+    logger.logAuthEvent('Admin attempting login', { email });
 
-      if (admin) {
-        saveAdminToLocalStorage(admin);
-        setLoading(false);
-        navigate('/admin-dashboard');
-      } else {
-        setError('Invalid admin credentials. Try: admin/admin123');
-        setLoading(false);
-      }
-    }, 500);
+    const response = await loginAdmin(email, password);
+
+    if (response.success) {
+      logger.info('Admin login successful', { email });
+      setLoading(false);
+      navigate('/admin-dashboard');
+    } else {
+      logger.warn('Admin login failed', { email, error: response.error });
+      setError(response.error || 'Login failed. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,19 +43,19 @@ const AdminLogin = () => {
 
             <Form onSubmit={handleLogin}>
               <Form.Group className="mb-3">
-                <Form.Label className="text-dark">Admin Username</Form.Label>
+                <Form.Label className="text-dark">Email</Form.Label>
                 <Form.Control
-                  type="text"
-                  placeholder="Enter admin username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  placeholder="Enter admin email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="border-success"
                 />
               </Form.Group>
 
               <Form.Group className="mb-4">
-                <Form.Label className="text-dark">Admin Password</Form.Label>
+                <Form.Label className="text-dark">Password</Form.Label>
                 <Form.Control
                   type="password"
                   placeholder="Enter admin password"
@@ -75,18 +76,11 @@ const AdminLogin = () => {
               </Button>
             </Form>
 
-            <div className="text-center mt-3">
-              <p className="text-dark">Demo Admin Credentials:</p>
-              <small className="text-muted">Username: admin</small>
-              <br />
-              <small className="text-muted">Password: admin123</small>
-            </div>
-
             <div className="text-center mt-4">
               <p className="text-dark">Are you a user?</p>
               <Button
                 variant="outline-success"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/')}
                 className="w-100"
               >
                 User Login

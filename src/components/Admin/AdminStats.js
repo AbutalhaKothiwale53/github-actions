@@ -1,16 +1,42 @@
-import React from 'react';
-import { Row, Col, Card } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Alert } from 'react-bootstrap';
 import {
   BiGroup,
   BiNews,
   BiLike,
   BiHeart,
 } from 'react-icons/bi';
-import { adminModule } from '../../modules/adminModule';
+import { getDashboardStats } from '../../modules/adminModule';
+import logger from '../../utils/frontendLogger';
 import '../Admin/Admin.css';
 
 const AdminStats = () => {
-  const stats = adminModule.getDashboardStats();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    setLoading(true);
+    setError('');
+
+    logger.info('Loading dashboard stats');
+
+    const response = await getDashboardStats();
+
+    if (response.success) {
+      setStats(response.data);
+      logger.info('Dashboard stats loaded successfully');
+    } else {
+      logger.warn('Failed to load dashboard stats', { error: response.error });
+      setError(response.error || 'Failed to load statistics');
+    }
+
+    setLoading(false);
+  };
 
   const StatCard = ({ icon: Icon, label, value, color }) => (
     <div className="stat-card">
@@ -24,6 +50,30 @@ const AdminStats = () => {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="admin-stats py-4">
+        <Alert variant="info">Loading statistics...</Alert>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="admin-stats py-4">
+        <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="admin-stats py-4">
+        <Alert variant="warning">No statistics available</Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-stats py-4">
       <Row className="g-4 mb-5">
@@ -31,7 +81,7 @@ const AdminStats = () => {
           <StatCard
             icon={BiGroup}
             label="Total Users"
-            value={stats.totalUsers}
+            value={stats.totalUsers || 0}
             color="users"
           />
         </Col>
@@ -39,7 +89,7 @@ const AdminStats = () => {
           <StatCard
             icon={BiNews}
             label="Total Posts"
-            value={stats.totalPosts}
+            value={stats.totalPosts || 0}
             color="posts"
           />
         </Col>
@@ -47,7 +97,7 @@ const AdminStats = () => {
           <StatCard
             icon={BiLike}
             label="Total Likes"
-            value={stats.totalLikes}
+            value={stats.totalLikes || 0}
             color="likes"
           />
         </Col>
@@ -55,7 +105,7 @@ const AdminStats = () => {
           <StatCard
             icon={BiHeart}
             label="Total Comments"
-            value={stats.totalComments}
+            value={stats.totalComments || 0}
             color="comments"
           />
         </Col>
@@ -70,17 +120,17 @@ const AdminStats = () => {
             <Card.Body>
               <div className="summary-item">
                 <span>Average Posts per User</span>
-                <strong>{stats.avgPostsPerUser}</strong>
+                <strong>{stats.avgPostsPerUser || 0}</strong>
               </div>
               <div className="summary-item">
                 <span>Total Engagements</span>
-                <strong>{stats.totalLikes + stats.totalComments}</strong>
+                <strong>{(stats.totalLikes || 0) + (stats.totalComments || 0)}</strong>
               </div>
               <div className="summary-item">
                 <span>Avg Engagement per Post</span>
                 <strong>
                   {(
-                    (stats.totalLikes + stats.totalComments) /
+                    ((stats.totalLikes || 0) + (stats.totalComments || 0)) /
                     (stats.totalPosts || 1)
                   ).toFixed(1)}
                 </strong>
@@ -97,7 +147,7 @@ const AdminStats = () => {
             <Card.Body>
               <div className="summary-item">
                 <span>Active Users</span>
-                <strong>{stats.totalUsers}</strong>
+                <strong>{stats.totalUsers || 0}</strong>
               </div>
               <div className="summary-item">
                 <span>Platform Status</span>

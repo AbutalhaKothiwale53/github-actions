@@ -16,8 +16,9 @@ src/
 ├── components/
 │   ├── Auth/
 │   │   ├── UserLogin.js          # User login form
+│   │   ├── UserRegister.js       # User registration form
 │   │   ├── AdminLogin.js         # Admin login form
-│   │   └── Auth.css              # Login page styles
+│   │   └── Auth.css              # Login/register page styles
 │   ├── User/
 │   │   ├── UserHome.js           # Main user home/feed page
 │   │   ├── CreatePost.js         # Story creation form
@@ -35,10 +36,12 @@ src/
 │   ├── Comments/                 # Comments components (ready for expansion)
 │   └── NotFound.js               # 404 page
 ├── modules/
-│   ├── authModule.js             # Authentication logic & mock users
-│   ├── postsModule.js            # Posts CRUD operations
-│   └── adminModule.js            # Admin-specific operations
+│   ├── authModule.js             # Authentication logic with API calls
+│   ├── postsModule.js            # Posts CRUD operations with API
+│   └── adminModule.js            # Admin operations with API
 ├── utils/
+│   ├── apiClient.js              # API service layer
+│   ├── frontendLogger.js         # Client-side logging utility
 │   └── ProtectedRoute.js         # Route protection wrapper
 ├── App.js                         # Main app with routing
 └── index.css                      # Global theme and Bootstrap import
@@ -47,7 +50,8 @@ src/
 ## 🚀 Features
 
 ### User Features
-- ✅ User login with demo credentials
+- ✅ User registration with validation
+- ✅ User login with email/password
 - ✅ Create text-based stories (posts)
 - ✅ View feed with all stories
 - ✅ Like/Unlike posts
@@ -79,12 +83,18 @@ src/
 ## 🔐 Authentication
 
 ### User Demo Credentials
-- **Username**: `user1` or `user2`
+- **Email**: `user1@example.com` or `user2@example.com`
 - **Password**: `password123`
 
 ### Admin Demo Credentials
-- **Username**: `admin`
+- **Email**: `admin@example.com`
 - **Password**: `admin123`
+
+### New User Registration
+- Navigate to `/register` to create a new account
+- Provide full name, email, and password (min 6 characters)
+- Passwords must match
+- After registration, you'll be logged in automatically
 
 ## 🛠️ Installation & Setup
 
@@ -106,24 +116,43 @@ src/
 
 ## 📋 Data Storage
 
-Currently, the application uses **mock data stored in JavaScript modules** and **localStorage**:
+The application uses **API calls to backend services**:
 
-- **Authentication**: Mock users stored in `authModule.js`
-- **Posts**: Mock posts and post operations in `postsModule.js`
-- **Session**: User login state stored in browser localStorage
-- **Admin Stats**: Calculated from mock data in `adminModule.js`
+- **Authentication**: User registration and login via backend API
+- **Posts**: Story CRUD operations via API endpoints
+- **Interactions**: Like/unlike and comments via API
+- **Session**: User login state and JWT token stored in browser localStorage
+- **Admin Stats**: Calculated from backend data in `/api/admin/stats`
 
-**Note**: All data is reset on page refresh. For production, replace mock data with real API calls.
+**Note**: All endpoints require a running backend server on `http://localhost:1900/api`. Update `.env` file to change the API URL.
 
 ## 🎯 How to Use
 
 ### For Users
 
-1. **Login**: Navigate to `/login` and enter credentials
-2. **Create Story**: Click the "Share your story..." input
-3. **View Feed**: All posts appear in chronological order
-4. **Engage**: Like posts and add comments
-5. **Logout**: Click logout button in navbar
+1. **Register**: Navigate to `/register` to create a new account
+   - Enter full name, email, and password
+   - Confirm password must match
+   - Submit to create account and auto-login
+
+2. **Login**: Navigate to `/login` to sign in with existing credentials
+   - Enter email and password
+   - Click "Login" to access your account
+
+3. **Create Story**: Click the "Share your story..." input on home page
+   - Type your story content
+   - Click "Post" to share
+
+4. **View Feed**: All posts appear chronologically on your home page
+   - Scroll to see all stories from all users
+   - Click refresh to load latest posts
+
+5. **Engage**: Interact with posts by:
+   - Clicking the heart icon to like/unlike
+   - Clicking comment button to add your thoughts
+   - Reading other users' comments and replies
+
+6. **Logout**: Click logout button in top navbar to sign out
 
 ### For Admins
 
@@ -157,7 +186,8 @@ The application is fully responsive and works on:
 ### Auth Flow
 ```
 App.js
-├── /login → UserLogin.js (Public)
+├── / → UserLogin.js (Public)
+├── /register → UserRegister.js (Public)
 ├── /admin-login → AdminLogin.js (Public)
 ├── /home → ProtectedRoute → UserHome.js (User only)
 └── /admin-dashboard → ProtectedRoute → AdminDashboard.js (Admin only)

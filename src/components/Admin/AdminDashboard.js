@@ -6,6 +6,7 @@ import AdminStats from './AdminStats';
 import AdminUsers from './AdminUsers';
 import AdminPosts from './AdminPosts';
 import { getCurrentAdmin, logout } from '../../modules/authModule';
+import logger from '../../utils/frontendLogger';
 import '../Admin/Admin.css';
 
 const AdminDashboard = () => {
@@ -15,11 +16,14 @@ const AdminDashboard = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleLogout = () => {
+    logger.logAuthEvent('Admin logging out', { adminId: admin?.id });
     logout();
+    logger.info('Admin logged out successfully', { adminId: admin?.id });
     navigate('/admin-login');
   };
 
   const handleDataChange = () => {
+    logger.logUserAction('Admin refreshing dashboard', { adminId: admin?.id });
     setRefreshKey((prev) => prev + 1);
   };
 

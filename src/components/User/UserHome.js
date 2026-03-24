@@ -1,10 +1,14 @@
+// UserHome.js - Main user dashboard component with feed and post creation functionality
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Navbar, Nav, Button } from 'react-bootstrap';
 import { BiLogOut } from 'react-icons/bi';
 import Feed from '../Post/Feed';
 import CreatePost from './CreatePost';
-import { getCurrentUser, logout } from '../../modules/authModule';
+// import { getCurrentUser, logout } from '../../modules/authModule';
+import { getCurrentUser } from '../../utils/authUtils';
+import { logout } from '../../utils/authUtils';
+import logger from '../../utils/frontendLogger';
 import '../User/UserHome.css';
 
 const UserHome = () => {
@@ -13,16 +17,19 @@ const UserHome = () => {
   const [refreshFeed, setRefreshFeed] = useState(0);
 
   const handleLogout = () => {
+    logger.logAuthEvent('User logging out', { userId: user?.id });
     logout();
-    navigate('/login');
+    logger.info('User logged out successfully', { userId: user?.id });
+    navigate('/');
   };
 
   const handlePostCreated = () => {
+    logger.logUserAction('Refreshing feed after post creation', { userId: user?.id });
     setRefreshFeed((prev) => prev + 1);
   };
 
   if (!user) {
-    navigate('/login');
+    navigate('/');
     return null;
   }
 

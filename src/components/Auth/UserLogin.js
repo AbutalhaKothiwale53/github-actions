@@ -1,34 +1,37 @@
+// UserLogin.js - Component for user login functionality with enhanced UI and logging
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Container, Form, Button, Alert, Card } from 'react-bootstrap';
-import { validateUserLogin, saveUserToLocalStorage } from '../../modules/authModule';
+import { loginUser } from '../../modules/authModule';
+import logger from '../../utils/frontendLogger';
 import '../Auth/Auth.css';
 
 const UserLogin = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const user = validateUserLogin(username, password);
+    logger.logAuthEvent('User attempting login', { email });
 
-      if (user) {
-        saveUserToLocalStorage(user);
-        setLoading(false);
-        navigate('/home');
-      } else {
-        setError('Invalid username or password. Try: user1/user2 with password: password123');
-        setLoading(false);
-      }
-    }, 500);
+    const response = await loginUser(email, password);
+
+    if (response.success) {
+      localStorage.setItem('token', response.data.token); 
+      logger.info('User login successful', { email });
+      setLoading(false);
+      navigate('/home');
+    } else {
+      logger.warn('User login failed', { email, error: response.error });
+      setError(response.error || 'Login failed. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,12 +45,12 @@ const UserLogin = () => {
 
             <Form onSubmit={handleLogin}>
               <Form.Group className="mb-3">
-                <Form.Label className="text-dark">Username</Form.Label>
+                <Form.Label className="text-dark">Email</Form.Label>
                 <Form.Control
-                  type="text"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  placeholder="Enter email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="border-success"
                 />
@@ -75,11 +78,13 @@ const UserLogin = () => {
               </Button>
             </Form>
 
-            <div className="text-center mt-3">
-              <p className="text-dark">Demo Credentials:</p>
-              <small className="text-muted">Username: user1 or user2</small>
-              <br />
-              <small className="text-muted">Password: password123</small>
+            <div className="text-center mb-4">
+              <p className="text-dark">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-success text-decoration-none fw-bold">
+                  Register here
+                </Link>
+              </p>
             </div>
 
             <div className="text-center mt-4">

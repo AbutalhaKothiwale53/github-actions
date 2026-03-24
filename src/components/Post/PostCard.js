@@ -1,32 +1,84 @@
 import React, { useState } from 'react';
-import { Card, Button, Form } from 'react-bootstrap';
+import { Card, Button, Form, Alert } from 'react-bootstrap';
 import { BiLike, BiCommentDots, BiSolidLike } from 'react-icons/bi';
-import { postsModule } from '../../modules/postsModule';
+import { likeStory, unlikeStory, addCommentToStory, getStoryComments } from '../../modules/postsModule';
+import logger from '../../utils/frontendLogger';
 import '../Post/PostCard.css';
 
 const PostCard = ({ post, onPostUpdate }) => {
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState('');
-  const [comments, setComments] = useState(post.commentsList);
+  const [comments, setComments] = useState(post.comments || []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  const userHasLiked = post.likes?.includes(currentUser.id);
+  const likeCount = post.likes?.length || 0;
+  const commentCount = post.comments?.length || 0;
 
-  const handleLike = () => {
-    if (post.userHasLiked) {
-      postsModule.unlikePost(post.id);
-    } else {
-      postsModule.likePost(post.id);
+  const handleLike = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      if (userHasLiked) {
+        logger.logUserAction('Unliking story', { storyId: post._id });
+        const response = await unlikeStory(post._id);
+        if (response.success) {
+          logger.info('Story unliked successfully', { storyId: post._id });
+          onPostUpdate();
+        } else {
+          logger.warn('Failed to unlike story', { storyId: post._id, error: response.error });
+          setError(response.error || 'Failed to unlike story');
+        }
+      } else {
+        logger.logUserAction('Liking story', { storyId: post._id });
+        const response = await likeStory(post._id);
+        if (response.success) {
+          logger.info('Story liked successfully', { storyId: post._id });
+          onPostUpdate();
+        } else {
+          logger.warn('Failed to like story', { storyId: post._id, error: response.error });
+          setError(response.error || 'Failed to like story');
+        }
+      }
+    } catch (err) {
+      logger.error('Error in like/unlike', { error: err.message });
+      setError('An error occurred. Please try again.');
     }
-    onPostUpdate();
+
+    setLoading(false);
   };
 
-  const handleAddComment = (e) => {
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    if (newComment.trim()) {
-      const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-      postsModule.addComment(post.id, currentUser.id, currentUser.name, newComment);
+    if (!newComment.trim()) return;
+
+    setLoading(true);
+    setError('');
+
+    logger.logUserAction('Adding comment to story', { storyId: post._id });
+
+    const response = await addCommentToStory(post._id, newComment);
+
+    if (response.success) {
+      logger.info('Comment added successfully', { storyId: post._id });
       setNewComment('');
-      setComments(postsModule.getPostComments(post.id));
+      
+      // Load updated comments
+      const commentsResponse = await getStoryComments(post._id);
+      if (commentsResponse.success) {
+        setComments(commentsResponse.data || []);
+      }
+      
       onPostUpdate();
+    } else {
+      logger.warn('Failed to add comment', { storyId: post._id, error: response.error });
+      setError(response.error || 'Failed to add comment');
     }
+
+    setLoading(false);
   };
 
   const formatDate = (dateString) => {
@@ -48,11 +100,13 @@ const PostCard = ({ post, onPostUpdate }) => {
   return (
     <Card className="post-card shadow-sm mb-4">
       <Card.Body>
+        {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
+        
         <div className="d-flex justify-content-between align-items-start mb-3">
           <div className="d-flex gap-2 flex-grow-1">
-            <div className="post-avatar">{post.author.charAt(0)}</div>
+            <div className="post-avatar">{post.author?.charAt(0) || 'U'}</div>
             <div className="flex-grow-1">
-              <h6 className="mb-0">{post.author}</h6>
+              <h6 className="mb-0">{post.author || 'Unknown'}</h6>
               <small className="text-muted">{formatDate(post.createdAt)}</small>
             </div>
           </div>
@@ -61,16 +115,17 @@ const PostCard = ({ post, onPostUpdate }) => {
         <p className="post-content">{post.content}</p>
 
         <div className="post-stats mb-3 pb-3 border-bottom">
-          <small className="text-muted">{post.likes} likes • {post.comments} comments</small>
+          <small className="text-muted">{likeCount} likes • {commentCount} comments</small>
         </div>
 
         <div className="post-actions d-flex gap-2 mb-3">
           <Button
             variant="light"
-            className={`action-btn flex-grow-1 ${post.userHasLiked ? 'liked' : ''}`}
+            className={`action-btn flex-grow-1 ${userHasLiked ? 'liked' : ''}`}
             onClick={handleLike}
+            disabled={loading}
           >
-            {post.userHasLiked ? (
+            {userHasLiked ? (
               <>
                 <BiSolidLike /> Unlike
               </>
@@ -84,6 +139,7 @@ const PostCard = ({ post, onPostUpdate }) => {
             variant="light"
             className="action-btn flex-grow-1"
             onClick={() => setShowComments(!showComments)}
+            disabled={loading}
           >
             <BiCommentDots /> Comment
           </Button>
@@ -94,7 +150,7 @@ const PostCard = ({ post, onPostUpdate }) => {
             <div className="comments-list mb-3">
               {comments.length > 0 ? (
                 comments.map((comment) => (
-                  <div key={comment.id} className="comment mb-2 pb-2">
+                  <div key={comment._id || comment.id} className="comment mb-2 pb-2">
                     <div className="comment-header">
                       <span className="comment-author">{comment.author}</span>
                       <small className="text-muted">{formatDate(comment.createdAt)}</small>
@@ -115,14 +171,15 @@ const PostCard = ({ post, onPostUpdate }) => {
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   className="comment-input"
+                  disabled={loading}
                 />
                 <Button
                   variant="success"
                   type="submit"
                   size="sm"
-                  disabled={!newComment.trim()}
+                  disabled={!newComment.trim() || loading}
                 >
-                  Post
+                  {loading ? 'Posting...' : 'Post'}
                 </Button>
               </div>
             </Form>
